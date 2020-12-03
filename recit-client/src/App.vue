@@ -23,7 +23,7 @@ export default {
     axios.get(`${config['dev-url']}:${config['server-port']}/api/test`)
     .then(res => {
       console.log(res)
-      this.welcome = res 
+      this.welcome = res.data.msg 
     })
   }
 }

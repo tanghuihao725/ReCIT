@@ -1,8 +1,15 @@
 const express = require('express')
 const path = require('path')
 const api = require('./src/api')
-const app = express()
+const os = require('os')
+const pty = require('node-pty')
+const WebSocket = require('ws')
 
+
+const app = express()
+const shell = os.platform() === 'win32' ? 'powershell.exe' : 'bash'
+
+console.log(os.platform())
 // 解析post请求中的body
 const bodyParser = require('body-parser')
 
@@ -29,4 +36,28 @@ const port = '9898'
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`)
+})
+
+// wss
+const wss = new WebSocket.Server({ port: 9999 })
+
+
+wss.on('connection', ws => {
+    console.log('socket connection on')
+    const ptyProcess = pty.spawn(shell, [], {
+        name: 'xterm-color',
+        cols: 80,
+        rows: 30,
+        cwd: process.env.HOME,
+        env: process.env
+    })
+    ptyProcess.write('python3\r')
+    ws.on('message', res=>{
+        console.log(res)
+        ptyProcess.write(res)
+    })
+    ptyProcess.on('data', data => {
+        process.stdout.write(data)
+        ws.send(data)
+    })
 })
