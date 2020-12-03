@@ -1,0 +1,12 @@
+{
+  "name": "recit",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/tanghuihao725/ReCIT.git",
+  "author": "THH_MAC <18210240177@fudan.edu.cn>",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.21.0",
+    "express": "^4.17.1"
+  }
+}
