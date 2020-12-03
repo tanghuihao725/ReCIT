@@ -7,7 +7,7 @@ const WebSocket = require('ws')
 
 
 const app = express()
-const shell = os.platform() === 'win32' ? 'powershell.exe' : 'bash'
+const shell = os.platform() === 'win32' ? 'powershell.exe' : 'zsh'
 
 console.log(os.platform())
 // 解析post请求中的body
@@ -51,10 +51,10 @@ wss.on('connection', ws => {
         cwd: process.env.HOME,
         env: process.env
     })
-    ptyProcess.write('python3\r')
+    // ptyProcess.write('python3\r')
     ws.on('message', res=>{
-        console.log(res)
-        ptyProcess.write(res)
+        // console.log(res)
+        // ptyProcess.write(res)
     })
     ptyProcess.on('data', data => {
         process.stdout.write(data)

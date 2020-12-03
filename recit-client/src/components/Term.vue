@@ -29,6 +29,7 @@ export default {
             const term = new Terminal({
                 fontSize: 14,
                 cursorBlink: true,
+                cursorStyle:'underline',
             })
             const attachAddon = new AttachAddon(this.socket)
             const fitAddon = new FitAddon()
