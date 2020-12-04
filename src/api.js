@@ -5,14 +5,15 @@ const path = require('path')
 const { json } = require('body-parser')
 
 const router = express.Router()
+const ptyProcess = require('../server.js')
 const logFilePath = 'log.txt'
 
 /**
  * 通用方法
  */
 // 获取时间戳
-const dateString = () => {
-  const date = new Date()
+const dateString = (newDate) => {
+  const date = newDate || new Date()
   return `TIME: ${date.toLocaleDateString()} ${date.toLocaleTimeString()}`
 }
 
@@ -22,6 +23,24 @@ const dateString = () => {
  */
 router.get('/test', (req, res) => {
   res.json({ msg: 'API works!' })
+})
+
+router.post('/init', (req, res) => {
+  const { name, file1, file2 } = req.body
+  const date = new Date()
+  const time = date.getTime()
+
+  child_process.exec(`cd results && mkdir ${time} && cd ${time}`, (err, stdout, stderr) => {
+    fs.writeFileSync(`results/.runtime.txt`, time)
+    fs.writeFileSync(`results/${time}/.data.txt`, JSON.stringify({ name, file1, file2, time }))
+    console.log(stderr)
+    res.json({
+      msg: 'ok',
+      stdout,
+      err
+    })
+  })
+  
 })
 
 /**

@@ -2,7 +2,7 @@
     <div class="term-container">
         <div id="xterm" class="xterm" />
     </div>
-</template>
+</template> 
 
 <script>
 import 'xterm/css/xterm.css'
@@ -18,18 +18,27 @@ export default {
         }
     },
     mounted(){
-        this.initSocket()
+        // this.initSocket()
     },
     beforeDestroy(){
         this.socket && this.socket.close()
         this.term && this.term.dispose()
     },
     methods:{
+        init(){
+            if(this.term) return 
+            this.initSocket()
+        },
         initTerm(){
             const term = new Terminal({
                 fontSize: 14,
-                cursorBlink: true,
+                cursorBlink: 'bar',
                 cursorStyle:'underline',
+                // disableStdin: true,
+                theme: {
+                    background: '#fff',
+                    foreground: 'black',
+                }
             })
             const attachAddon = new AttachAddon(this.socket)
             const fitAddon = new FitAddon()
@@ -62,3 +71,11 @@ export default {
     }
 }
 </script>
+
+<style lang="less" scoped>
+.term-container{
+    border: 2px solid black ;
+    border-radius: 6px;
+    padding: 5px 15px;
+}
+</style>

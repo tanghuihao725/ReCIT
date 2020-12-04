@@ -1,8 +1,9 @@
 <template>
   <div id="app">
     <div id="nav">
-      <router-link to="/">Home</router-link> |
-      <router-link to="/about">About</router-link>
+      <h1 class="title">致病基因检测系统</h1>
+      <router-link to="/">致病基因检测</router-link> |
+      <router-link to="/about">历史记录查询</router-link>
     </div>
     <router-view/>
   </div>
@@ -12,10 +13,11 @@
 <style>
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
+  font-family: "Helvetica Neue",Helvetica,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","微软雅黑",Arial,sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
-  color: #2c3e50;
+  /* color: #2c3e50; */
   position: relative;
 }
 
@@ -29,27 +31,20 @@
 }
 
 #nav a.router-link-exact-active {
-  color: #42b983;
+  color: #03f;
 }
 
 *{
   margin: 0;
   padding: 0;
 }
-.bg{
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100vw;
+html{
+  /* background: url(assets/jiyin-bg.jpeg); */
 }
-.bg::before{
-  /* content: ''; */
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  left: 0;
-  top: 0;
-  background-color: rgba(0,0,0,0.1);
-  z-index: 1;
+</style>
+
+<style lang="less" scoped>
+.title{
+  margin: 10px 0 30px 0;
 }
 </style>

@@ -2,6 +2,7 @@ const express = require('express')
 const path = require('path')
 const api = require('./src/api')
 const os = require('os')
+const fs = require('fs')
 const pty = require('node-pty')
 const WebSocket = require('ws')
 
@@ -40,24 +41,29 @@ app.listen(port, () => {
 
 // wss
 const wss = new WebSocket.Server({ port: 9999 })
-
+var ptyProcess
 
 wss.on('connection', ws => {
     console.log('socket connection on')
-    const ptyProcess = pty.spawn(shell, [], {
+    ptyProcess = pty.spawn(shell, [], {
         name: 'xterm-color',
         cols: 80,
         rows: 30,
         cwd: process.env.HOME,
         env: process.env
     })
-    // ptyProcess.write('python3\r')
+    // 获取runtime信息
+    const filename = fs.readFileSync('results/.runtime.txt').toString()
+    const fileData = JSON.parse(fs.readFileSync(`results/${filename}/.data.txt`).toString())
+    ptyProcess.write(`.\\src\\algo\\test.exe "${fileData.name}" "${fileData.file1 || null}" "${fileData.file2 || null}"\r`)
     ws.on('message', res=>{
-        // console.log(res)
-        // ptyProcess.write(res)
+        console.log(res)
+        ptyProcess.write(res)
     })
     ptyProcess.on('data', data => {
         process.stdout.write(data)
         ws.send(data)
     })
 })
+
+module.exports.ptyProcess = ptyProcess
