@@ -55,7 +55,9 @@ wss.on('connection', ws => {
     // 获取runtime信息
     const filename = fs.readFileSync('results/.runtime.txt').toString()
     const fileData = JSON.parse(fs.readFileSync(`results/${filename}/.data.txt`).toString())
-    ptyProcess.write(`.\\src\\algo\\test.exe "${fileData.name}" "${fileData.file1 || null}" "${fileData.file2 || null}"\r`)
+    // ptyProcess.write(`clear\r`)
+    // ptyProcess.write(`.\\src\\algo\\test.exe  "${filename}" "${fileData.name}" "${fileData.file1 || null}" "${fileData.file2 || null}"\r`)
+    ptyProcess.write(`.\\src\\algo\\find_Genes_ByReCIT.exe  "${filename}" "${fileData.name||'未命名'}" "${fileData.file1 || 'leukemia.csv'}" "${fileData.file2 || null}"\r`)
     ws.on('message', res=>{
         console.log(res)
         ptyProcess.write(res)

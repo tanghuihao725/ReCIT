@@ -13,7 +13,7 @@ const logFilePath = 'log.txt'
  */
 // 获取时间戳
 const dateString = (newDate) => {
-  const date = newDate || new Date()
+  const date = typeof newDate === Date ? newDate : new Date(newDate) 
   return `TIME: ${date.toLocaleDateString()} ${date.toLocaleTimeString()}`
 }
 
@@ -24,219 +24,99 @@ const dateString = (newDate) => {
 router.get('/test', (req, res) => {
   res.json({ msg: 'API works!' })
 })
-
+/**
+ * 实例生成时初始化文件夹
+ */
 router.post('/init', (req, res) => {
   const { name, file1, file2 } = req.body
   const date = new Date()
   const time = date.getTime()
-
   child_process.exec(`cd results && mkdir ${time} && cd ${time}`, (err, stdout, stderr) => {
     fs.writeFileSync(`results/.runtime.txt`, time)
     fs.writeFileSync(`results/${time}/.data.txt`, JSON.stringify({ name, file1, file2, time }))
-    console.log(stderr)
     res.json({
+      success: true,
       msg: 'ok',
       stdout,
       err
     })
   })
+})
+/**
+ * 获取运行时进度
+ */
+router.get('/runtime', (req, res) => {
+  const runtimeId = fs.readFileSync(`results/.runtime.txt`).toString()
+  const runtimeFilePath = `results/${runtimeId}/.runtime.txt`
+  const existRuntimeFile = fs.existsSync(runtimeFilePath)
+  const progressFile = fs.existsSync(`results/${runtimeId}/progress.txt`) && fs.readFileSync(`results/${runtimeId}/progress.txt`).toString()
+  if(!existRuntimeFile){
+    res.json({ success: false })
+  } else {
+    const runtimeFile = fs.readFileSync(runtimeFilePath).toString().split('\\n')
+    res.json({ success: true, process: runtimeFile.filter(i => !!i), end: !!runtimeFile.find(i => i === '5 结束'), progress: parseInt(progressFile) })
+  }
+})
+
+/**
+ * 获取结果
+ */
+router.get('/result', (req, res) => {
+  const runtimeId = req.query.id || fs.readFileSync(`results/.runtime.txt`).toString()
+  const resultFilePath = `results/${runtimeId}/result.txt`
+  const inputData = JSON.parse(fs.readFileSync(`results/${runtimeId}/.data.txt`).toString())
+  const resultFile = fs.existsSync(resultFilePath) && fs.readFileSync(resultFilePath).toString().trim()
+  const nameFile = fs.existsSync(`upload/${inputData.file2 || 'notexist'}`) && fs.readFileSync(`upload/${inputData.file2}`).toString().trim()
   
-})
 
-/**
- * 训练
- */
-router.get('/train', async (req, res) => {
-  const { module } = req.query
-  if (!module) {
-    res.json({ errmsg: '必填module参数' })
-    writeLog("api/train 未填module参数")
-    return
-  }
-  let modulePath = `modules/${module}`
-  proxyModulePath(modulePath, module, doTraining)
-  /**
-   * 执行训练
-   */
-  function doTraining(modulePathAfterProxy) {
-    fs.exists(`${modulePathAfterProxy}/train.py`, exists => {
-      if (!exists) {
-        writeLog(`api/train/${module} 找不到指定module`)
-        res.json({ errmsg: 'module不存在' })
-      } else {
-        res.json({ msg: '正在训练，请使用/log接口查看训练结果' })
-        const id = parseInt(Math.random() * 1e5)
-        writeLog(`api/train/${module}/id:${id} 开始训练模型`)
-
-        // 写入时间戳
-        fs.writeFileSync(
-          `${modulePathAfterProxy}/trainLog.txt`,
-          `${dateString()} 正在训练中... \n`
-        )
-        try {
-          child_process.exec(`d: && cd ${modulePathAfterProxy} && python3 train.py`, (err, stdout, stderr) => {
-            if (err) {
-              fs.appendFileSync(`${modulePathAfterProxy}/trainLog.txt`, `${dateString()} python执行阶段错误 \n ${String(err)}`)
-              writeLog(`api/train/${module}/id:${id} 失败:python执行出现错误\n${err.toString()}`)
-            }
-            else
-              fs.appendFileSync(`${modulePathAfterProxy}/trainLog.txt`, `${dateString()} 训练完成 \n ${stdout}`)
-            writeLog(`api/train/${module}/id:${id} 训练完成`)
-
-          })
-        } catch (error) {
-          fs.appendFileSync(`${modulePathAfterProxy}/trainLog.txt`, `${dateString()} python执行阶段错误 \n ${String(error)}`)
-        }
-
-      }
-    })
-  }
-
-})
-/**
- * 获取训练日志
- */
-router.get('/log', (req, res) => {
-  const { module } = req.query
-  if (!module) {
-    res.json({ errmsg: '必填module参数' })
-    writeLog("api/log 未填module参数")
-    return
-  }
-  let modulePath = `modules/${module}`
-
-  proxyModulePath(modulePath, module, getLog)
-
-  function getLog(modulePath) {
-    fs.exists(`${modulePath}/trainLog.txt`, exists => {
-      if (!exists) {
-        res.json({ errmsg: 'module不存在或未进行训练' })
-        writeLog(`api/log/${module} 找不到指定module或没有进行训练`)
-      } else {
-        // const data = fs.readFileSync(`${modulePath}/trainLog.txt`)
-        writeLog(`api/log/${module} 发送日志成功`)
-        res.writeHead(200, { 'Content-Type': 'text/html;charset=utf-8' })
-        res.sendfile(`${modulePath}/trainLog.txt`)
-      }
-    })
-  }
-
-})
-
-router.get('/logs', (req, res) => {
-  const { type } = req
-  if (type && type === 'clear') child_process.exec('rm log.txt & touch log.txt')
-  //  writeLog('发送Log成功')
-  res.sendfile('log.txt')
-})
-
-router.post('/predict', (req, res) => {
-  const { data, module } = req.body
-  if (!module) {
-    res.json({ errmsg: '必填module' })
-    writeLog("api/predict 未填module参数")
-    return
-  }
-  let modulePath = `modules/${module}`
-
-  proxyModulePath(modulePath, module, doingPredict)
-
-  function doingPredict(modulePath) {
-    fs.exists(`${modulePath}/model.py`, exists => {
-      if (!exists) {
-        res.json({ errmsg: 'module不存在' })
-        writeLog(`api/predict/${module} 未找到指定module`)
-      } else {
-        if (data) fs.writeFileSync(`${modulePath}/predictData.txt`, data, { encoding: 'utf8' })
-        try {
-          child_process.exec(`d: && cd ${modulePath} && python3 model.py`, (err, stdout, stderr) => {
-            if (err) {
-              res.json({ errmsg: 'python执行阶段错误:' + String(err) })
-              writeLog(`api/predict/${module} 失败:python执行出现错误\n${String(err)}`)
-              return
-            }
-            const data = fs.readFileSync(`${modulePath}/result/predictResult.txt`, { encoding: 'utf-8' })
-            res.json({ data: '预测成功，结果为:' + data.toString().trim() })
-            console.log(String(data))
-            writeLog(`api/predict/${module} 预测成功 结果${data.toString()}`)
-          })
-        } catch (error) {
-          res.json({ errmsg: 'python执行阶段错误:' + String(error) })
-        }
-      }
-    })
-  }
-
-})
-
-
-router.post('/predictExt', (req, res) => {
-  const { data, module } = req.body
-  if (!module) {
-    res.json({ errmsg: '必填module' })
-    writeLog("api/predict 未填module参数")
-    return
-  }
-  let modulePath = `modules/${module}`
-
-  proxyModulePath(modulePath, module, doingPredict)
-
-function doingPredict(modulePath) {
-    fs.exists(`${modulePath}/model.py`, exists => {
-      if (!exists) {
-        res.json({ errmsg: 'module不存在' })
-        writeLog(`api/predict/${module} 未找到指定module`)
-      } else {
-        if (data) fs.writeFileSync(`${modulePath}/predictData.txt`, data, { encoding: 'utf8' })
-        // 创建唯一标识id
-        const id = `${(new Date()).getTime()}`
-        try {
-          child_process.exec(`cd EXT_RESULTS && mkdir ${id}`)
-          // child_process.exec(`d: && cd ${modulePath} && python3 model.py`, (err, stdout, stderr) => {
-          child_process.exec(`d: && cd ${modulePath} && python3 model.py --id ${id}`, (err, stdout, stderr) => {
-            console.log({err, stdout, stderr})
-          })
-        } catch (error) {
-          res.json({ errmsg: 'python执行阶段错误:' + String(error) })
-        }
-        res.json({
-          message: '结果请点击url查看',
-          url: `http://117.73.9.94:7277/#/?module=${module}&id=${id}`
-        })
-      }
-    })
-  }
-})
-
-router.get('/fetchExtResults', (req,res) => {
-  const { id } = req.query
-  const rootPath = `./EXT_RESULTS/${id}`
-  const dir =fs.readdirSync(rootPath)
-  let resultPath = '', imgMap = {}, end = false
-  // 文件处理 分为result.txt 和 图片类型
-  dir.forEach(dirPath => {
-    if(dirPath === 'result.txt') resultPath = `${rootPath}/result.txt`
-    else if(dirPath.endsWith('.jpg') || dirPath.endsWith('.png')){
-      imgMap[dirPath.split('.')[0]] = `http://117.73.9.94:7277/ext/${id}/${dirPath}`
+  let resultArr = []
+  if(resultFile){
+    resultArr = resultFile.split(',').map(index => ({ index }))
+    // 处理名字而文件
+    if(nameFile){
+      const nameArr = nameFile.split('\r\n')
+      resultArr = resultArr.map(log => Object.assign(log, { name: nameArr[log.index - 1] }))
     }
-  })
-  if(!resultPath) res.json({ type: 0, message: '未出现结果' })
-  else {
-    const result = {}
-    const resultInline = fs.readFileSync(resultPath).toString().split('\n')
-    resultInline.forEach(line => {
-      const [code, res] = line.split(' ')
-      if(!imgMap || !code) return
-      if(code.toUpperCase() === 'END') end = true
-      else {
-        result[code] = {
-          id: parseInt(code,10) + 1,
-          result: res,
-          img: imgMap[code]
-        }
-      } 
-    })
-    res.json({ type: 1, result, end })
   }
+  res.json({
+    success: true,
+    data: resultArr,
+    time: runtimeId
+  })
 })
+
+/**
+ * 获取历史结果目录
+ */
+router.get('/history', (req,res) => {
+  const list = []
+  const dirs = fs.readdirSync('results').filter(name => !name.endsWith('txt'))
+  dirs.forEach(id => {
+    const data = fs.existsSync(`results/${id}/.data.txt`) && JSON.parse(fs.readFileSync(`results/${id}/.data.txt`).toString())
+    const result = fs.existsSync(`results/${id}/result.txt`) && fs.readFileSync(`results/${id}/result.txt`).toString()
+    list.push({ ...data, result })
+  })
+  res.json({ list })
+})
+
+/**
+ * 获取输入文件列表
+ */
+router.get('/history-upload', (req,res) => {
+  res.json({
+    list: fs.readdirSync('upload')
+  })
+})
+
+/**
+ * 清楚所有缓存
+ */
+router.get('/clear-history', (req,res) => {
+  child_process.exec('rm -rf results/*', (err, stdout, stderr) => {
+    res.json({
+      success: true
+    })
+  })
+})
+
 module.exports = router
